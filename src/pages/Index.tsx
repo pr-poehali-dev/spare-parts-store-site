@@ -794,13 +794,42 @@ function CartPage({
   changeQty: (id: number, delta: number) => void;
   navigate: (p: Page) => void;
 }) {
+  const [step, setStep] = useState<"cart" | "form" | "done">("cart");
+  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", comment: "" });
+  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setStep("done");
+  };
+
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
       <div className="mb-8">
         <div className="text-xs text-[hsl(var(--accent))] font-semibold tracking-widest uppercase mb-1">Покупки</div>
-        <h1 className="font-display text-4xl font-bold tracking-wide">КОРЗИНА</h1>
+        <h1 className="font-display text-4xl font-bold tracking-wide">
+          {step === "cart" ? "КОРЗИНА" : step === "form" ? "ОФОРМЛЕНИЕ ЗАКАЗА" : "ЗАКАЗ ПРИНЯТ"}
+        </h1>
       </div>
-      {cart.length === 0 ? (
+
+      {step === "done" && (
+        <div className="max-w-lg mx-auto text-center py-16 animate-scale-in">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
+            <Icon name="CheckCircle" size={32} className="text-green-600" />
+          </div>
+          <h2 className="font-display text-2xl font-bold mb-3">Заказ оформлен!</h2>
+          <p className="text-muted-foreground text-sm leading-relaxed mb-2">
+            Спасибо, <strong>{form.name}</strong>! Мы получили ваш заказ и свяжемся с вами по номеру <strong>{form.phone}</strong> в течение 30 минут.
+          </p>
+          <p className="text-muted-foreground text-sm mb-8">Сумма заказа: <strong className="text-foreground">{total.toLocaleString("ru")} ₽</strong></p>
+          <button onClick={() => navigate("catalog")} className="bg-foreground text-white px-8 py-3 font-semibold text-sm hover:bg-[hsl(var(--accent))] transition-colors">
+            Продолжить покупки
+          </button>
+        </div>
+      )}
+
+      {step === "cart" && cart.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <Icon name="ShoppingCart" size={48} className="text-muted-foreground mb-4" />
           <div className="font-display text-2xl font-bold mb-2">Корзина пуста</div>
@@ -809,7 +838,9 @@ function CartPage({
             Перейти в каталог
           </button>
         </div>
-      ) : (
+      )}
+
+      {step === "cart" && cart.length > 0 && (
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 flex flex-col gap-3">
             {cart.map(({ product, qty }) => (
@@ -851,12 +882,90 @@ function CartPage({
                 <span>Сумма</span>
                 <span>{total.toLocaleString("ru")} ₽</span>
               </div>
-              <button className="w-full bg-[hsl(var(--accent))] text-white py-3.5 font-semibold text-sm tracking-wide hover:opacity-90 transition-opacity mb-3">
+              <button onClick={() => setStep("form")} className="w-full bg-[hsl(var(--accent))] text-white py-3.5 font-semibold text-sm tracking-wide hover:opacity-90 transition-opacity mb-3">
                 Оформить заказ
               </button>
               <button onClick={() => navigate("catalog")} className="w-full border border-border py-2.5 text-sm font-medium hover:bg-muted transition-colors">
                 Продолжить покупки
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === "form" && (
+        <div className="flex flex-col lg:flex-row gap-8 animate-fade-in">
+          <div className="flex-1">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+              <div className="border-b border-border pb-5 mb-1">
+                <h2 className="font-display font-bold text-base tracking-wide mb-4">КОНТАКТНЫЕ ДАННЫЕ</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Имя *</label>
+                    <input required type="text" value={form.name} onChange={f("name")}
+                      placeholder="Иван Иванов"
+                      className="w-full border border-border px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Телефон *</label>
+                    <input required type="tel" value={form.phone} onChange={f("phone")}
+                      placeholder="+7 (___) ___-__-__"
+                      className="w-full border border-border px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Email</label>
+                    <input type="email" value={form.email} onChange={f("email")}
+                      placeholder="example@mail.ru"
+                      className="w-full border border-border px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-b border-border pb-5 mb-1">
+                <h2 className="font-display font-bold text-base tracking-wide mb-4">ДОСТАВКА</h2>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">Адрес доставки</label>
+                  <input type="text" value={form.address} onChange={f("address")}
+                    placeholder="Город, улица, дом, квартира"
+                    className="w-full border border-border px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors" />
+                </div>
+              </div>
+
+              <div>
+                <h2 className="font-display font-bold text-base tracking-wide mb-4">КОММЕНТАРИЙ</h2>
+                <textarea value={form.comment} onChange={f("comment")} rows={3}
+                  placeholder="Пожелания к заказу, удобное время для связи..."
+                  className="w-full border border-border px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors resize-none" />
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setStep("cart")}
+                  className="border border-border px-6 py-3 text-sm font-medium hover:bg-muted transition-colors flex items-center gap-2">
+                  <Icon name="ArrowLeft" size={14} /> Назад
+                </button>
+                <button type="submit"
+                  className="flex-1 bg-[hsl(var(--accent))] text-white py-3 font-semibold text-sm tracking-wide hover:opacity-90 transition-opacity">
+                  Подтвердить заказ
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="w-full lg:w-72 flex-shrink-0">
+            <div className="border border-border p-5 sticky top-24">
+              <h2 className="font-display font-bold text-sm tracking-wide mb-4 uppercase">Ваш заказ</h2>
+              <div className="flex flex-col gap-3 mb-4">
+                {cart.map(({ product, qty }) => (
+                  <div key={product.id} className="flex justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground leading-snug min-w-0 truncate">{product.name} × {qty}</span>
+                    <span className="font-semibold flex-shrink-0">{(product.price * qty).toLocaleString("ru")} ₽</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between font-display font-bold text-lg border-t border-border pt-3">
+                <span>Итого</span>
+                <span>{total.toLocaleString("ru")} ₽</span>
+              </div>
             </div>
           </div>
         </div>
