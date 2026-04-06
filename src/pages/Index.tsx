@@ -210,12 +210,29 @@ interface PartResult {
   brand: string;
 }
 
-function ArticleSearch() {
+function ArticleSearch({ addToCart }: { addToCart: (p: Product) => void }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PartResult[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [added, setAdded] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleAdd = (r: PartResult) => {
+    const product: Product = {
+      id: Math.abs(r.article.split("").reduce((a, c) => a + c.charCodeAt(0), 0)),
+      name: r.name,
+      article: r.article,
+      brand: r.brand,
+      type: "Из поиска",
+      price: r.price,
+      img: PARTS_IMG,
+      inStock: r.in_stock,
+    };
+    addToCart(product);
+    setAdded(prev => ({ ...prev, [r.article]: true }));
+    setTimeout(() => setAdded(prev => ({ ...prev, [r.article]: false })), 1500);
+  };
 
   const search = async () => {
     const q = query.trim();
@@ -264,17 +281,24 @@ function ArticleSearch() {
           {results.length === 0 ? (
             <p className="text-gray-400 text-sm text-center py-4">Артикул не найден в базе</p>
           ) : results.map(r => (
-            <div key={r.article} className="bg-white/10 border border-white/10 px-3 py-2.5 flex items-start justify-between gap-3">
-              <div className="min-w-0">
+            <div key={r.article} className="bg-white/10 border border-white/10 px-3 py-2.5 flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <div className="text-white text-sm font-medium leading-snug truncate">{r.name}</div>
                 <div className="text-gray-400 text-xs mt-0.5">{r.article} · {r.brand}</div>
-              </div>
-              <div className="flex-shrink-0 text-right">
-                <div className="text-[hsl(var(--accent))] font-bold text-sm">{r.price.toLocaleString("ru")} ₽</div>
-                <div className={`text-xs mt-0.5 ${r.in_stock ? "text-green-400" : "text-red-400"}`}>
-                  {r.in_stock ? "В наличии" : "Под заказ"}
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[hsl(var(--accent))] font-bold text-sm">{r.price.toLocaleString("ru")} ₽</span>
+                  <span className={`text-xs ${r.in_stock ? "text-green-400" : "text-yellow-400"}`}>
+                    {r.in_stock ? "В наличии" : "Под заказ"}
+                  </span>
                 </div>
               </div>
+              <button
+                onClick={() => handleAdd(r)}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all duration-300 ${added[r.article] ? "bg-green-500 text-white" : "bg-[hsl(var(--accent))] text-white hover:opacity-90"}`}
+              >
+                <Icon name={added[r.article] ? "Check" : "ShoppingCart"} size={13} />
+                {added[r.article] ? "Добавлено" : "В корзину"}
+              </button>
             </div>
           ))}
         </div>
@@ -323,7 +347,7 @@ function HomePage({ navigate, addToCart }: { navigate: (p: Page) => void; addToC
               </div>
             </div>
             <div className="animate-fade-in delay-2">
-              <ArticleSearch />
+              <ArticleSearch addToCart={addToCart} />
             </div>
           </div>
         </div>
