@@ -76,7 +76,7 @@ def handler(event: dict, context) -> dict:
     msg.attach(MIMEText(html, 'html', 'utf-8'))
 
     smtp_password = os.environ.get('SMTP_PASSWORD', '')
-    smtp_host = os.environ.get('SMTP_HOST', 'smtp.yandex.ru')
+    smtp_host = os.environ.get('SMTP_HOST', 'smtp.mail.ru')
     smtp_port = int(os.environ.get('SMTP_PORT', '465'))
 
     with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
