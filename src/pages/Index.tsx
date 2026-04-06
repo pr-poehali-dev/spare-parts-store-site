@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import { Slider } from "@/components/ui/slider";
 
 const SEARCH_PARTS_URL = "https://functions.poehali.dev/40f9974a-61dd-4720-92e4-9eef1c3d8050";
+const SEND_ORDER_URL = "https://functions.poehali.dev/e6abb2e5-7bbc-46f2-9846-ec4d49654c4f";
 const HERO_IMG = "https://cdn.poehali.dev/projects/e988edd9-026d-4559-84e8-494aaee012e3/files/d0bbbb62-2557-4dc6-b72a-b5e4fbb26c9f.jpg";
 const PARTS_IMG = "https://cdn.poehali.dev/projects/e988edd9-026d-4559-84e8-494aaee012e3/files/92681ebc-0cd5-477a-b6d2-900be8f5ba1e.jpg";
 
@@ -763,7 +764,7 @@ function ContactsPage() {
           <h2 className="font-display text-xl font-bold tracking-wide">НАШИ КОНТАКТЫ</h2>
           {[
             { icon: "Phone", label: "Телефон", value: "+7 (951) 913-76-40", sub: "Звонки принимаем в рабочее время" },
-            { icon: "Mail", label: "Email", value: "zayavka@avtozapnn.ru", sub: "Ответ в течение 30 минут" },
+            { icon: "Mail", label: "Email", value: "zakaz@avtozapnn.ru", sub: "Ответ в течение 30 минут" },
             { icon: "MapPin", label: "Адрес", value: "ул. Автозаводская, 10, склад 5", sub: "Нижний Новгород" },
             { icon: "Clock", label: "Режим работы", value: "Пн–Сб: 09:00–19:00", sub: "Вс: выходной" },
           ].map(c => (
@@ -796,12 +797,31 @@ function CartPage({
 }) {
   const [step, setStep] = useState<"cart" | "form" | "done">("cart");
   const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", comment: "" });
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
   const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(prev => ({ ...prev, [k]: e.target.value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep("done");
+    setSending(true);
+    setSendError("");
+    try {
+      await fetch(SEND_ORDER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client: form,
+          items: cart.map(({ product, qty }) => ({ name: product.name, qty, price: product.price * qty })),
+          total,
+        }),
+      });
+      setStep("done");
+    } catch {
+      setSendError("Не удалось отправить заказ. Позвоните нам: +7 (951) 913-76-40");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -938,14 +958,17 @@ function CartPage({
                   className="w-full border border-border px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors resize-none" />
               </div>
 
+              {sendError && (
+                <p className="text-red-600 text-sm border border-red-200 bg-red-50 px-4 py-3">{sendError}</p>
+              )}
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setStep("cart")}
-                  className="border border-border px-6 py-3 text-sm font-medium hover:bg-muted transition-colors flex items-center gap-2">
+                <button type="button" onClick={() => setStep("cart")} disabled={sending}
+                  className="border border-border px-6 py-3 text-sm font-medium hover:bg-muted transition-colors flex items-center gap-2 disabled:opacity-50">
                   <Icon name="ArrowLeft" size={14} /> Назад
                 </button>
-                <button type="submit"
-                  className="flex-1 bg-[hsl(var(--accent))] text-white py-3 font-semibold text-sm tracking-wide hover:opacity-90 transition-opacity">
-                  Подтвердить заказ
+                <button type="submit" disabled={sending}
+                  className="flex-1 bg-[hsl(var(--accent))] text-white py-3 font-semibold text-sm tracking-wide hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2">
+                  {sending ? <><Icon name="Loader2" size={16} className="animate-spin" /> Отправляем...</> : "Подтвердить заказ"}
                 </button>
               </div>
             </form>
