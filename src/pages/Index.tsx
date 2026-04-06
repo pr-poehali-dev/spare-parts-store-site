@@ -185,8 +185,8 @@ export default function Index() {
             <div>
               <div className="font-display font-semibold text-xs tracking-widest text-gray-400 uppercase mb-3">Контакты</div>
               <div className="flex flex-col gap-2 text-sm text-gray-300">
-                <span>+7 (800) 000-00-00</span>
-                <span>info@autozapchasti.ru</span>
+                <span>+7 (951) 913-76-40</span>
+                <span>zayavka@avtozapnn.ru</span>
                 <span>Пн–Сб: 09:00–19:00</span>
               </div>
             </div>
@@ -650,9 +650,9 @@ function ContactsPage() {
         <div className="flex flex-col gap-5">
           <h2 className="font-display text-xl font-bold tracking-wide">НАШИ КОНТАКТЫ</h2>
           {[
-            { icon: "Phone", label: "Телефон", value: "+7 (800) 000-00-00", sub: "Бесплатный звонок по России" },
-            { icon: "Mail", label: "Email", value: "info@autozapchasti.ru", sub: "Ответ в течение 30 минут" },
-            { icon: "MapPin", label: "Адрес", value: "ул. Автозаводская, 10, склад 5", sub: "Москва, 115280" },
+            { icon: "Phone", label: "Телефон", value: "+7 (951) 913-76-40", sub: "Звонки принимаем в рабочее время" },
+            { icon: "Mail", label: "Email", value: "zayavka@avtozapnn.ru", sub: "Ответ в течение 30 минут" },
+            { icon: "MapPin", label: "Адрес", value: "ул. Автозаводская, 10, склад 5", sub: "Нижний Новгород" },
             { icon: "Clock", label: "Режим работы", value: "Пн–Сб: 09:00–19:00", sub: "Вс: выходной" },
           ].map(c => (
             <div key={c.label} className="flex items-start gap-4 border-b border-border pb-5">
