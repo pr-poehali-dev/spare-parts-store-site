@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { Slider } from "@/components/ui/slider";
 
+const SEARCH_PARTS_URL = "https://functions.poehali.dev/40f9974a-61dd-4720-92e4-9eef1c3d8050";
 const HERO_IMG = "https://cdn.poehali.dev/projects/e988edd9-026d-4559-84e8-494aaee012e3/files/d0bbbb62-2557-4dc6-b72a-b5e4fbb26c9f.jpg";
 const PARTS_IMG = "https://cdn.poehali.dev/projects/e988edd9-026d-4559-84e8-494aaee012e3/files/92681ebc-0cd5-477a-b6d2-900be8f5ba1e.jpg";
 
@@ -200,6 +201,88 @@ export default function Index() {
   );
 }
 
+/* ========== ARTICLE SEARCH ========== */
+interface PartResult {
+  article: string;
+  name: string;
+  price: number;
+  in_stock: boolean;
+  brand: string;
+}
+
+function ArticleSearch() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PartResult[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const search = async () => {
+    const q = query.trim();
+    if (!q) { setError("Введите артикул"); return; }
+    setError("");
+    setLoading(true);
+    setResults(null);
+    try {
+      const res = await fetch(`${SEARCH_PARTS_URL}?article=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      const parsed = typeof data === "string" ? JSON.parse(data) : data;
+      setResults(parsed.results ?? []);
+    } catch {
+      setError("Ошибка соединения. Попробуйте снова.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white/10 backdrop-blur-sm border border-white/20 p-6 w-full">
+      <div className="text-xs text-[hsl(var(--accent))] font-semibold tracking-widest uppercase mb-2">Поиск по артикулу</div>
+      <h3 className="font-display text-lg font-bold text-white mb-4 tracking-wide">НАЙДИТЕ ДЕТАЛЬ БЫСТРО</h3>
+      <div className="flex gap-2 mb-1">
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && search()}
+          placeholder="Введите артикул, напр. NGK-BKR6E"
+          className="flex-1 bg-white/10 border border-white/30 text-white placeholder:text-gray-400 px-3 py-2.5 text-sm focus:outline-none focus:border-[hsl(var(--accent))] transition-colors"
+        />
+        <button
+          onClick={search}
+          disabled={loading}
+          className="bg-[hsl(var(--accent))] text-white px-4 py-2.5 font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center gap-2"
+        >
+          {loading ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Search" size={16} />}
+        </button>
+      </div>
+      {error && <p className="text-red-300 text-xs mt-1">{error}</p>}
+
+      {results !== null && (
+        <div className="mt-4 flex flex-col gap-2 max-h-56 overflow-y-auto pr-1">
+          {results.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-4">Артикул не найден в базе</p>
+          ) : results.map(r => (
+            <div key={r.article} className="bg-white/10 border border-white/10 px-3 py-2.5 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-white text-sm font-medium leading-snug truncate">{r.name}</div>
+                <div className="text-gray-400 text-xs mt-0.5">{r.article} · {r.brand}</div>
+              </div>
+              <div className="flex-shrink-0 text-right">
+                <div className="text-[hsl(var(--accent))] font-bold text-sm">{r.price.toLocaleString("ru")} ₽</div>
+                <div className={`text-xs mt-0.5 ${r.in_stock ? "text-green-400" : "text-red-400"}`}>
+                  {r.in_stock ? "В наличии" : "Под заказ"}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ========== HOME ========== */
 function HomePage({ navigate, addToCart }: { navigate: (p: Page) => void; addToCart: (p: Product) => void }) {
   const featured = PRODUCTS.filter(p => p.oldPrice).slice(0, 4);
@@ -210,32 +293,37 @@ function HomePage({ navigate, addToCart }: { navigate: (p: Page) => void; addToC
         <div className="absolute inset-0">
           <img src={HERO_IMG} alt="Запчасти" className="w-full h-full object-cover opacity-20" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-32">
-          <div className="max-w-2xl">
-            <div className="inline-block bg-[hsl(var(--accent))] text-white text-xs font-body font-semibold tracking-widest uppercase px-3 py-1 mb-6 animate-fade-in">
-              Оригинальные запчасти
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-28">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            <div>
+              <div className="inline-block bg-[hsl(var(--accent))] text-white text-xs font-body font-semibold tracking-widest uppercase px-3 py-1 mb-6 animate-fade-in">
+                Оригинальные запчасти
+              </div>
+              <h1 className="font-display text-5xl md:text-7xl font-bold text-white leading-tight tracking-wide mb-6 animate-fade-in delay-1">
+                НАДЁЖНЫЕ<br />
+                <span className="text-[hsl(var(--accent))]">ЗАПЧАСТИ</span><br />
+                ДЛЯ ВАШЕГО АВТО
+              </h1>
+              <p className="text-gray-300 text-lg mb-8 leading-relaxed animate-fade-in delay-2">
+                Более 50 000 позиций в наличии. Доставка по всей России. Гарантия качества.
+              </p>
+              <div className="flex flex-wrap gap-3 animate-fade-in delay-3">
+                <button
+                  onClick={() => navigate("catalog")}
+                  className="bg-[hsl(var(--accent))] text-white px-8 py-3.5 font-body font-semibold text-sm tracking-wide hover:opacity-90 transition-opacity"
+                >
+                  Перейти в каталог
+                </button>
+                <button
+                  onClick={() => navigate("contacts")}
+                  className="border border-white text-white px-8 py-3.5 font-body font-semibold text-sm tracking-wide hover:bg-white hover:text-foreground transition-colors"
+                >
+                  Связаться с нами
+                </button>
+              </div>
             </div>
-            <h1 className="font-display text-5xl md:text-7xl font-bold text-white leading-tight tracking-wide mb-6 animate-fade-in delay-1">
-              НАДЁЖНЫЕ<br />
-              <span className="text-[hsl(var(--accent))]">ЗАПЧАСТИ</span><br />
-              ДЛЯ ВАШЕГО АВТО
-            </h1>
-            <p className="text-gray-300 text-lg mb-8 leading-relaxed animate-fade-in delay-2">
-              Более 50 000 позиций в наличии. Доставка по всей России. Гарантия качества.
-            </p>
-            <div className="flex flex-wrap gap-3 animate-fade-in delay-3">
-              <button
-                onClick={() => navigate("catalog")}
-                className="bg-[hsl(var(--accent))] text-white px-8 py-3.5 font-body font-semibold text-sm tracking-wide hover:opacity-90 transition-opacity"
-              >
-                Перейти в каталог
-              </button>
-              <button
-                onClick={() => navigate("contacts")}
-                className="border border-white text-white px-8 py-3.5 font-body font-semibold text-sm tracking-wide hover:bg-white hover:text-foreground transition-colors"
-              >
-                Связаться с нами
-              </button>
+            <div className="animate-fade-in delay-2">
+              <ArticleSearch />
             </div>
           </div>
         </div>
