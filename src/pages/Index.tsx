@@ -763,7 +763,7 @@ function ContactsPage() {
         <div className="flex flex-col gap-5">
           <h2 className="font-display text-xl font-bold tracking-wide">НАШИ КОНТАКТЫ</h2>
           {[
-            { icon: "Phone", label: "Телефон", value: "+7 (951) 913-76-40", sub: "Звонки принимаем в рабочее время" },
+            { icon: "Phone", label: "Телефон", value: "+7 (123) 456-78-90", sub: "Звонки принимаем в рабочее время" },
             { icon: "Mail", label: "Email", value: "zakaz@avtozapnn.ru", sub: "Ответ в течение 30 минут" },
             { icon: "MapPin", label: "Адрес", value: "ул. Автозаводская, 10, склад 5", sub: "Нижний Новгород" },
             { icon: "Clock", label: "Режим работы", value: "Пн–Сб: 09:00–19:00", sub: "Вс: выходной" },
@@ -818,7 +818,7 @@ function CartPage({
       });
       setStep("done");
     } catch {
-      setSendError("Не удалось отправить заказ. Позвоните нам: +7 (951) 913-76-40");
+      setSendError("Не удалось отправить заказ. Позвоните нам: +7 (123) 456-78-90");
     } finally {
       setSending(false);
     }
