@@ -139,26 +139,9 @@ def handler(event: dict, context) -> dict:
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     cur = conn.cursor()
 
-    cur.execute(f"""
-        CREATE TEMP TABLE tmp_parts (
-            article varchar(100),
-            name varchar(255),
-            price numeric(10,2),
-            old_price numeric(10,2),
-            brand varchar(100),
-            type varchar(100),
-            in_stock boolean
-        )
-    """)
-
-    cur.executemany(
-        "INSERT INTO tmp_parts VALUES (%s, %s, %s, %s, %s, %s, %s)",
-        records
-    )
-
-    cur.execute(f"""
+    cur.executemany(f"""
         INSERT INTO {schema}.parts (article, name, price, old_price, brand, type, in_stock)
-        SELECT article, name, price, old_price, brand, type, in_stock FROM tmp_parts
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (article) DO UPDATE SET
             name = EXCLUDED.name,
             price = EXCLUDED.price,
@@ -166,7 +149,7 @@ def handler(event: dict, context) -> dict:
             brand = EXCLUDED.brand,
             type = EXCLUDED.type,
             in_stock = EXCLUDED.in_stock
-    """)
+    """, records)
 
     total = cur.rowcount
     conn.commit()
