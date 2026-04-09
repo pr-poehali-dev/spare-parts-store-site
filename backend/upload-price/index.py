@@ -4,6 +4,7 @@ import json
 import base64
 import io
 import psycopg2
+import psycopg2.extras
 import openpyxl
 import xlrd
 
@@ -139,9 +140,9 @@ def handler(event: dict, context) -> dict:
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     cur = conn.cursor()
 
-    cur.executemany(f"""
+    psycopg2.extras.execute_values(cur, f"""
         INSERT INTO {schema}.parts (article, name, price, old_price, brand, type, in_stock)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        VALUES %s
         ON CONFLICT (article) DO UPDATE SET
             name = EXCLUDED.name,
             price = EXCLUDED.price,
@@ -149,9 +150,9 @@ def handler(event: dict, context) -> dict:
             brand = EXCLUDED.brand,
             type = EXCLUDED.type,
             in_stock = EXCLUDED.in_stock
-    """, records)
+    """, records, page_size=500)
 
-    total = cur.rowcount
+    total = len(records)
     conn.commit()
     cur.close()
     conn.close()
