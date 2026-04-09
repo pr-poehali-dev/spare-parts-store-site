@@ -90,11 +90,8 @@ def handler(event: dict, context) -> dict:
         return None
 
     schema = os.environ['MAIN_DB_SCHEMA']
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
-    cur = conn.cursor()
 
-    inserted = 0
-    updated = 0
+    records = []
     skipped = 0
 
     for row in rows[1:]:
@@ -111,13 +108,13 @@ def handler(event: dict, context) -> dict:
             continue
 
         try:
-            price = float(str(price_raw).replace(',', '.').replace(' ', '')) if price_raw else 0
+            price = float(str(price_raw).replace(',', '.').replace('\xa0', '').replace(' ', '')) if price_raw else 0
         except Exception:
             skipped += 1
             continue
 
         try:
-            old_price = float(str(old_price_raw).replace(',', '.').replace(' ', '')) if old_price_raw else None
+            old_price = float(str(old_price_raw).replace(',', '.').replace('\xa0', '').replace(' ', '')) if old_price_raw else None
         except Exception:
             old_price = None
 
@@ -129,31 +126,55 @@ def handler(event: dict, context) -> dict:
             in_stock_str = str(in_stock_raw).strip().lower()
             in_stock = in_stock_str not in ('0', 'нет', 'no', 'false', 'н', '')
 
-        article = str(article).strip()
-        name = str(name).strip()
-        brand = str(brand).strip() if brand else None
-        part_type = str(part_type).strip() if part_type else None
+        records.append((
+            str(article).strip(),
+            str(name).strip(),
+            price,
+            old_price,
+            str(brand).strip() if brand else None,
+            str(part_type).strip() if part_type else None,
+            in_stock,
+        ))
 
-        cur.execute(f"SELECT id FROM {schema}.parts WHERE article = '{article}'")
-        existing = cur.fetchone()
+    conn = psycopg2.connect(os.environ['DATABASE_URL'])
+    cur = conn.cursor()
 
-        if existing:
-            cur.execute(f"""
-                UPDATE {schema}.parts
-                SET name = %s, price = %s, old_price = %s, brand = %s, type = %s, in_stock = %s
-                WHERE article = %s
-            """, (name, price, old_price, brand, part_type, in_stock, article))
-            updated += 1
-        else:
-            cur.execute(f"""
-                INSERT INTO {schema}.parts (article, name, price, old_price, brand, type, in_stock)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (article, name, price, old_price, brand, part_type, in_stock))
-            inserted += 1
+    cur.execute(f"""
+        CREATE TEMP TABLE tmp_parts (
+            article varchar(100),
+            name varchar(255),
+            price numeric(10,2),
+            old_price numeric(10,2),
+            brand varchar(100),
+            type varchar(100),
+            in_stock boolean
+        )
+    """)
 
+    cur.executemany(
+        "INSERT INTO tmp_parts VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        records
+    )
+
+    cur.execute(f"""
+        INSERT INTO {schema}.parts (article, name, price, old_price, brand, type, in_stock)
+        SELECT article, name, price, old_price, brand, type, in_stock FROM tmp_parts
+        ON CONFLICT (article) DO UPDATE SET
+            name = EXCLUDED.name,
+            price = EXCLUDED.price,
+            old_price = EXCLUDED.old_price,
+            brand = EXCLUDED.brand,
+            type = EXCLUDED.type,
+            in_stock = EXCLUDED.in_stock
+    """)
+
+    total = cur.rowcount
     conn.commit()
     cur.close()
     conn.close()
+
+    inserted = total
+    updated = 0
 
     return {
         'statusCode': 200,
