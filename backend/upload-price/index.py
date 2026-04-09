@@ -5,6 +5,22 @@ import base64
 import io
 import psycopg2
 import openpyxl
+import xlrd
+
+
+def parse_xls(file_bytes):
+    wb = xlrd.open_workbook(file_contents=file_bytes)
+    ws = wb.sheet_by_index(0)
+    rows = []
+    for i in range(ws.nrows):
+        rows.append(tuple(ws.cell_value(i, j) for j in range(ws.ncols)))
+    return rows
+
+
+def parse_xlsx(file_bytes):
+    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+    ws = wb.active
+    return list(ws.iter_rows(values_only=True))
 
 
 def handler(event: dict, context) -> dict:
@@ -23,6 +39,7 @@ def handler(event: dict, context) -> dict:
     body = json.loads(event.get('body', '{}'))
     password = body.get('password', '')
     file_b64 = body.get('file', '')
+    filename = body.get('filename', '').lower()
 
     if password != os.environ.get('ADMIN_PASSWORD', ''):
         return {
@@ -39,10 +56,21 @@ def handler(event: dict, context) -> dict:
         }
 
     file_bytes = base64.b64decode(file_b64)
-    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
-    ws = wb.active
 
-    rows = list(ws.iter_rows(values_only=True))
+    try:
+        if filename.endswith('.xls'):
+            rows = parse_xls(file_bytes)
+        else:
+            try:
+                rows = parse_xlsx(file_bytes)
+            except Exception:
+                rows = parse_xls(file_bytes)
+    except Exception as e:
+        return {
+            'statusCode': 400,
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': f'Не удалось прочитать файл: {str(e)}'})
+        }
     if not rows:
         return {
             'statusCode': 400,

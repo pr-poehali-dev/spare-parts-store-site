@@ -1087,7 +1087,7 @@ function AdminPage({ onUploaded }: { onUploaded: () => void }) {
         const res = await fetch(UPLOAD_PRICE_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password, file: b64 }),
+          body: JSON.stringify({ password, file: b64, filename: file.name }),
         });
         const data = await res.json();
         if (!res.ok || data.error) {
