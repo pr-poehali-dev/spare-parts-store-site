@@ -1,13 +1,15 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { Slider } from "@/components/ui/slider";
 
 const SEARCH_PARTS_URL = "https://functions.poehali.dev/40f9974a-61dd-4720-92e4-9eef1c3d8050";
 const SEND_ORDER_URL = "https://functions.poehali.dev/e6abb2e5-7bbc-46f2-9846-ec4d49654c4f";
+const CATALOG_URL = "https://functions.poehali.dev/a61f8143-b749-4c0e-ad22-7d4ac096f47f";
+const UPLOAD_PRICE_URL = "https://functions.poehali.dev/14aba241-93c9-4434-9905-e1042f525f3f";
 const HERO_IMG = "https://cdn.poehali.dev/projects/e988edd9-026d-4559-84e8-494aaee012e3/files/d0bbbb62-2557-4dc6-b72a-b5e4fbb26c9f.jpg";
 const PARTS_IMG = "https://cdn.poehali.dev/projects/e988edd9-026d-4559-84e8-494aaee012e3/files/92681ebc-0cd5-477a-b6d2-900be8f5ba1e.jpg";
 
-type Page = "home" | "catalog" | "about" | "delivery" | "contacts" | "cart";
+type Page = "home" | "catalog" | "about" | "delivery" | "contacts" | "cart" | "admin";
 
 interface Product {
   id: number;
@@ -21,24 +23,6 @@ interface Product {
   inStock: boolean;
 }
 
-const PRODUCTS: Product[] = [
-  { id: 1, name: "Тормозные колодки передние", article: "TRW-GDB1234", brand: "Toyota", type: "Тормоза", price: 2890, oldPrice: 3400, img: PARTS_IMG, inStock: true },
-  { id: 2, name: "Масляный фильтр", article: "MANN-W712", brand: "BMW", type: "Фильтры", price: 650, img: PARTS_IMG, inStock: true },
-  { id: 3, name: "Свеча зажигания (к-т 4шт)", article: "NGK-BKR6E", brand: "Volkswagen", type: "Двигатель", price: 1200, img: PARTS_IMG, inStock: true },
-  { id: 4, name: "Ремень ГРМ", article: "GATES-K015577XS", brand: "Ford", type: "Двигатель", price: 4500, oldPrice: 5200, img: PARTS_IMG, inStock: false },
-  { id: 5, name: "Воздушный фильтр", article: "FILTRON-AP149", brand: "Hyundai", type: "Фильтры", price: 890, img: PARTS_IMG, inStock: true },
-  { id: 6, name: "Амортизатор передний", article: "SACHS-313573", brand: "Toyota", type: "Подвеска", price: 7200, img: PARTS_IMG, inStock: true },
-  { id: 7, name: "Тормозной диск", article: "BREMBO-09.A356", brand: "BMW", type: "Тормоза", price: 5600, oldPrice: 6800, img: PARTS_IMG, inStock: true },
-  { id: 8, name: "Подшипник ступицы", article: "SKF-VKBD1043", brand: "Volkswagen", type: "Подвеска", price: 3100, img: PARTS_IMG, inStock: false },
-  { id: 9, name: "Топливный фильтр", article: "BOSCH-F026402004", brand: "Ford", type: "Фильтры", price: 1450, img: PARTS_IMG, inStock: true },
-  { id: 10, name: "Шаровая опора", article: "LEMFORDER-25609", brand: "Hyundai", type: "Подвеска", price: 2300, img: PARTS_IMG, inStock: true },
-  { id: 11, name: "Генератор", article: "VALEO-200011", brand: "Toyota", type: "Электрика", price: 14500, img: PARTS_IMG, inStock: true },
-  { id: 12, name: "Стартер", article: "DENSO-DSN926", brand: "BMW", type: "Электрика", price: 11200, oldPrice: 13000, img: PARTS_IMG, inStock: false },
-];
-
-const BRANDS = ["Все", "Toyota", "BMW", "Volkswagen", "Ford", "Hyundai"];
-const TYPES = ["Все", "Тормоза", "Фильтры", "Двигатель", "Подвеска", "Электрика"];
-
 const NAV_ITEMS: { label: string; page: Page; icon: string }[] = [
   { label: "Главная", page: "home", icon: "Home" },
   { label: "Каталог", page: "catalog", icon: "Grid3x3" },
@@ -47,15 +31,67 @@ const NAV_ITEMS: { label: string; page: Page; icon: string }[] = [
   { label: "Контакты", page: "contacts", icon: "Phone" },
 ];
 
+function useProducts() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(CATALOG_URL);
+      const data = await res.json();
+      const mapped: Product[] = (data.products || []).map((p: {
+        id: number; name: string; article: string; brand: string; type: string;
+        price: number; oldPrice?: number; imgUrl?: string; inStock: boolean;
+      }) => ({
+        id: p.id,
+        name: p.name,
+        article: p.article,
+        brand: p.brand || '',
+        type: p.type || '',
+        price: p.price,
+        oldPrice: p.oldPrice || undefined,
+        img: p.imgUrl || PARTS_IMG,
+        inStock: p.inStock,
+      }));
+      setProducts(mapped);
+    } catch {
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+  return { products, loading, reload: load };
+}
+
 export default function Index() {
   const [page, setPage] = useState<Page>("home");
   const [cart, setCart] = useState<{ product: Product; qty: number }[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const { products: allProducts, loading: productsLoading, reload: reloadProducts } = useProducts();
+
   const [filterBrand, setFilterBrand] = useState("Все");
   const [filterType, setFilterType] = useState("Все");
   const [filterArticle, setFilterArticle] = useState("");
-  const [filterPrice, setFilterPrice] = useState<[number, number]>([0, 15000]);
+  const [filterPrice, setFilterPrice] = useState<[number, number]>([0, 99999]);
+
+  const brands = useMemo(() => {
+    const set = new Set(allProducts.map(p => p.brand).filter(Boolean));
+    return ["Все", ...Array.from(set).sort()];
+  }, [allProducts]);
+
+  const types = useMemo(() => {
+    const set = new Set(allProducts.map(p => p.type).filter(Boolean));
+    return ["Все", ...Array.from(set).sort()];
+  }, [allProducts]);
+
+  const maxPrice = useMemo(() => {
+    if (!allProducts.length) return 99999;
+    return Math.ceil(Math.max(...allProducts.map(p => p.price)) / 1000) * 1000;
+  }, [allProducts]);
 
   const cartCount = cart.reduce((a, c) => a + c.qty, 0);
   const cartTotal = cart.reduce((a, c) => a + c.product.price * c.qty, 0);
@@ -74,14 +110,14 @@ export default function Index() {
   };
 
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter(p => {
+    return allProducts.filter(p => {
       if (filterBrand !== "Все" && p.brand !== filterBrand) return false;
       if (filterType !== "Все" && p.type !== filterType) return false;
-      if (filterArticle && !p.article.toLowerCase().includes(filterArticle.toLowerCase())) return false;
+      if (filterArticle && !p.article.toLowerCase().includes(filterArticle.toLowerCase()) && !p.name.toLowerCase().includes(filterArticle.toLowerCase())) return false;
       if (p.price < filterPrice[0] || p.price > filterPrice[1]) return false;
       return true;
     });
-  }, [filterBrand, filterType, filterArticle, filterPrice]);
+  }, [allProducts, filterBrand, filterType, filterArticle, filterPrice]);
 
   const navigate = (p: Page) => { setPage(p); setMobileMenuOpen(false); window.scrollTo(0, 0); };
 
@@ -154,6 +190,10 @@ export default function Index() {
       {page === "catalog" && (
         <CatalogPage
           products={filteredProducts}
+          loading={productsLoading}
+          brands={brands}
+          types={types}
+          maxPrice={maxPrice}
           filterBrand={filterBrand} setFilterBrand={setFilterBrand}
           filterType={filterType} setFilterType={setFilterType}
           filterArticle={filterArticle} setFilterArticle={setFilterArticle}
@@ -165,6 +205,7 @@ export default function Index() {
       {page === "delivery" && <DeliveryPage />}
       {page === "contacts" && <ContactsPage />}
       {page === "cart" && <CartPage cart={cart} total={cartTotal} removeFromCart={removeFromCart} changeQty={changeQty} navigate={navigate} />}
+      {page === "admin" && <AdminPage onUploaded={reloadProducts} />}
 
       {/* Footer */}
       <footer className="bg-foreground text-white mt-16">
@@ -187,14 +228,15 @@ export default function Index() {
             <div>
               <div className="font-display font-semibold text-xs tracking-widest text-gray-400 uppercase mb-3">Контакты</div>
               <div className="flex flex-col gap-2 text-sm text-gray-300">
-                <span>+7 (951) 913-76-40</span>
+                <span>+7 (123) 456-78-90</span>
                 <span>zayavka@avtozapnn.ru</span>
                 <span>Пн–Сб: 09:00–19:00</span>
               </div>
             </div>
           </div>
-          <div className="border-t border-gray-700 mt-8 pt-6 text-xs text-gray-500">
-            © 2024 АвтоЗапчасти. Все права защищены.
+          <div className="border-t border-gray-700 mt-8 pt-6 flex items-center justify-between text-xs text-gray-500">
+            <span>© 2024 АвтоЗапчасти. Все права защищены.</span>
+            <button onClick={() => navigate("admin")} className="hover:text-gray-400 transition-colors">Для администратора</button>
           </div>
         </div>
       </footer>
@@ -492,10 +534,15 @@ function ProductCard({ product, addToCart, delay = 1 }: { product: Product; addT
 
 /* ========== CATALOG ========== */
 function CatalogPage({
-  products, filterBrand, setFilterBrand, filterType, setFilterType,
+  products, loading, brands, types, maxPrice,
+  filterBrand, setFilterBrand, filterType, setFilterType,
   filterArticle, setFilterArticle, filterPrice, setFilterPrice, addToCart
 }: {
   products: Product[];
+  loading: boolean;
+  brands: string[];
+  types: string[];
+  maxPrice: number;
   filterBrand: string; setFilterBrand: (v: string) => void;
   filterType: string; setFilterType: (v: string) => void;
   filterArticle: string; setFilterArticle: (v: string) => void;
@@ -503,9 +550,9 @@ function CatalogPage({
   addToCart: (p: Product) => void;
 }) {
   const resetFilters = () => {
-    setFilterBrand("Все"); setFilterType("Все"); setFilterArticle(""); setFilterPrice([0, 15000]);
+    setFilterBrand("Все"); setFilterType("Все"); setFilterArticle(""); setFilterPrice([0, maxPrice]);
   };
-  const hasFilters = filterBrand !== "Все" || filterType !== "Все" || filterArticle !== "" || filterPrice[0] !== 0 || filterPrice[1] !== 15000;
+  const hasFilters = filterBrand !== "Все" || filterType !== "Все" || filterArticle !== "" || filterPrice[0] !== 0 || filterPrice[1] !== maxPrice;
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
@@ -524,36 +571,40 @@ function CatalogPage({
             </div>
 
             <div className="mb-5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Артикул</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Поиск</label>
               <input
                 type="text" value={filterArticle}
                 onChange={e => setFilterArticle(e.target.value)}
-                placeholder="Введите артикул..."
+                placeholder="Артикул или название..."
                 className="w-full border border-border px-3 py-2 text-sm focus:outline-none focus:border-foreground transition-colors"
               />
             </div>
 
-            <div className="mb-5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Марка авто</label>
-              <div className="flex flex-col gap-1">
-                {BRANDS.map(b => (
-                  <button key={b} onClick={() => setFilterBrand(b)}
-                    className={`text-left text-sm px-3 py-1.5 transition-colors ${filterBrand === b ? "bg-foreground text-white" : "hover:bg-muted"}`}
-                  >{b}</button>
-                ))}
+            {brands.length > 1 && (
+              <div className="mb-5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Марка авто</label>
+                <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                  {brands.map(b => (
+                    <button key={b} onClick={() => setFilterBrand(b)}
+                      className={`text-left text-sm px-3 py-1.5 transition-colors ${filterBrand === b ? "bg-foreground text-white" : "hover:bg-muted"}`}
+                    >{b}</button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="mb-5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Тип запчасти</label>
-              <div className="flex flex-col gap-1">
-                {TYPES.map(t => (
-                  <button key={t} onClick={() => setFilterType(t)}
-                    className={`text-left text-sm px-3 py-1.5 transition-colors ${filterType === t ? "bg-foreground text-white" : "hover:bg-muted"}`}
-                  >{t}</button>
-                ))}
+            {types.length > 1 && (
+              <div className="mb-5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Тип запчасти</label>
+                <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+                  {types.map(t => (
+                    <button key={t} onClick={() => setFilterType(t)}
+                      className={`text-left text-sm px-3 py-1.5 transition-colors ${filterType === t ? "bg-foreground text-white" : "hover:bg-muted"}`}
+                    >{t}</button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-3">Цена, ₽</label>
@@ -561,31 +612,40 @@ function CatalogPage({
                 <span>{filterPrice[0].toLocaleString("ru")} ₽</span>
                 <span>{filterPrice[1].toLocaleString("ru")} ₽</span>
               </div>
-              <Slider min={0} max={15000} step={100} value={filterPrice}
+              <Slider min={0} max={maxPrice} step={100} value={filterPrice}
                 onValueChange={v => setFilterPrice(v as [number, number])} className="w-full" />
             </div>
           </div>
         </aside>
 
         <div className="flex-1">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-muted-foreground">Найдено: <strong className="text-foreground">{products.length}</strong> товаров</span>
-          </div>
-          {products.length === 0 ? (
+          {loading ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <Icon name="SearchX" size={40} className="text-muted-foreground mb-4" />
-              <div className="font-display text-xl font-bold mb-2">Ничего не найдено</div>
-              <p className="text-sm text-muted-foreground mb-4">Попробуйте изменить параметры фильтра</p>
-              <button onClick={resetFilters} className="bg-foreground text-white px-5 py-2 text-sm font-semibold hover:opacity-90 transition-opacity">
-                Сбросить фильтры
-              </button>
+              <div className="w-8 h-8 border-2 border-foreground border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-sm text-muted-foreground">Загружаем каталог...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {products.map((p, i) => (
-                <ProductCard key={p.id} product={p} addToCart={addToCart} delay={Math.min((i % 6) + 1, 6)} />
-              ))}
-            </div>
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm text-muted-foreground">Найдено: <strong className="text-foreground">{products.length}</strong> товаров</span>
+              </div>
+              {products.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 text-center">
+                  <Icon name="SearchX" size={40} className="text-muted-foreground mb-4" />
+                  <div className="font-display text-xl font-bold mb-2">Ничего не найдено</div>
+                  <p className="text-sm text-muted-foreground mb-4">Попробуйте изменить параметры фильтра</p>
+                  <button onClick={resetFilters} className="bg-foreground text-white px-5 py-2 text-sm font-semibold hover:opacity-90 transition-opacity">
+                    Сбросить фильтры
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {products.map((p, i) => (
+                    <ProductCard key={p.id} product={p} addToCart={addToCart} delay={Math.min((i % 6) + 1, 6)} />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -991,6 +1051,163 @@ function CartPage({
               </div>
             </div>
           </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+/* ========== ADMIN ========== */
+function AdminPage({ onUploaded }: { onUploaded: () => void }) {
+  const [password, setPassword] = useState("");
+  const [authed, setAuthed] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState<{ inserted: number; updated: number; skipped: number; total: number } | null>(null);
+  const [error, setError] = useState("");
+
+  const handleAuth = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password.trim()) { setAuthError("Введите пароль"); return; }
+    setAuthed(true);
+    setAuthError("");
+  };
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) { setError("Выберите файл"); return; }
+    setUploading(true);
+    setError("");
+    setResult(null);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const b64 = (ev.target?.result as string).split(",")[1];
+        const res = await fetch(UPLOAD_PRICE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password, file: b64 }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          setError(data.error || "Ошибка загрузки");
+          if (res.status === 403) { setAuthed(false); setAuthError("Неверный пароль"); }
+        } else {
+          setResult(data);
+          onUploaded();
+        }
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setError("Ошибка соединения");
+      setUploading(false);
+    }
+  };
+
+  return (
+    <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
+      <div className="mb-8">
+        <div className="text-xs text-[hsl(var(--accent))] font-semibold tracking-widest uppercase mb-1">Управление</div>
+        <h1 className="font-display text-4xl font-bold tracking-wide">ОБНОВЛЕНИЕ ПРАЙСА</h1>
+      </div>
+
+      {!authed ? (
+        <div className="border border-border p-8 max-w-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-foreground flex items-center justify-center">
+              <Icon name="Lock" size={18} className="text-white" />
+            </div>
+            <div>
+              <div className="font-display font-bold text-sm tracking-wide">ДОСТУП ЗАКРЫТ</div>
+              <div className="text-xs text-muted-foreground">Введите пароль администратора</div>
+            </div>
+          </div>
+          <form onSubmit={handleAuth} className="flex flex-col gap-4">
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Пароль"
+              className="w-full border border-border px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors"
+            />
+            {authError && <p className="text-red-600 text-xs">{authError}</p>}
+            <button type="submit" className="bg-foreground text-white py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity">
+              Войти
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="border border-border p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-green-600 flex items-center justify-center">
+              <Icon name="CheckCircle" size={18} className="text-white" />
+            </div>
+            <div>
+              <div className="font-display font-bold text-sm tracking-wide">ДОСТУП ОТКРЫТ</div>
+              <div className="text-xs text-muted-foreground">Загрузите файл XLS или XLSX с прайс-листом</div>
+            </div>
+          </div>
+
+          <div className="bg-muted p-4 mb-6 text-sm text-muted-foreground">
+            <p className="font-semibold text-foreground mb-2">Требования к файлу:</p>
+            <ul className="flex flex-col gap-1 list-disc list-inside">
+              <li>Формат: XLS или XLSX (Excel)</li>
+              <li>Первая строка — заголовки</li>
+              <li>Обязательные колонки: <strong>Артикул</strong>, <strong>Наименование</strong>, <strong>Цена</strong></li>
+              <li>Необязательные: Марка, Тип, Старая цена, Наличие</li>
+            </ul>
+          </div>
+
+          <form onSubmit={handleUpload} className="flex flex-col gap-4">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Файл прайс-листа</label>
+              <input
+                type="file"
+                accept=".xls,.xlsx"
+                onChange={e => setFile(e.target.files?.[0] || null)}
+                className="w-full border border-border px-3 py-2.5 text-sm focus:outline-none focus:border-foreground transition-colors file:mr-3 file:py-1 file:px-3 file:border-0 file:text-xs file:font-semibold file:bg-foreground file:text-white"
+              />
+            </div>
+            {error && <p className="text-red-600 text-sm border border-red-200 bg-red-50 px-4 py-3">{error}</p>}
+            {result && (
+              <div className="border border-green-200 bg-green-50 px-4 py-4">
+                <p className="font-semibold text-green-800 mb-2">Файл успешно загружен!</p>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="bg-white border border-green-200 p-3">
+                    <div className="font-display text-2xl font-bold text-green-700">{result.inserted}</div>
+                    <div className="text-xs text-muted-foreground">Добавлено</div>
+                  </div>
+                  <div className="bg-white border border-green-200 p-3">
+                    <div className="font-display text-2xl font-bold text-blue-700">{result.updated}</div>
+                    <div className="text-xs text-muted-foreground">Обновлено</div>
+                  </div>
+                  <div className="bg-white border border-green-200 p-3">
+                    <div className="font-display text-2xl font-bold text-gray-500">{result.skipped}</div>
+                    <div className="text-xs text-muted-foreground">Пропущено</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={uploading || !file}
+              className="bg-[hsl(var(--accent))] text-white py-3 font-semibold text-sm tracking-wide hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {uploading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Загружаем...
+                </>
+              ) : (
+                <>
+                  <Icon name="Upload" size={16} />
+                  Загрузить прайс-лист
+                </>
+              )}
+            </button>
+          </form>
         </div>
       )}
     </main>

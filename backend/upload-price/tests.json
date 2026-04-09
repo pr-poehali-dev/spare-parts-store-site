@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Wrong password returns 403",
+      "method": "POST",
+      "path": "/",
+      "body": {"password": "wrong", "file": ""},
+      "expectedStatus": 403,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

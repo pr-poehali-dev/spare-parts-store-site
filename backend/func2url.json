@@ -1,4 +1,6 @@
 {
+  "catalog": "https://functions.poehali.dev/a61f8143-b749-4c0e-ad22-7d4ac096f47f",
+  "upload-price": "https://functions.poehali.dev/14aba241-93c9-4434-9905-e1042f525f3f",
   "send-order": "https://functions.poehali.dev/e6abb2e5-7bbc-46f2-9846-ec4d49654c4f",
   "search-parts": "https://functions.poehali.dev/40f9974a-61dd-4720-92e4-9eef1c3d8050"
 }

@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "Get catalog products",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
