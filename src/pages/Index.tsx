@@ -186,7 +186,7 @@ export default function Index() {
         )}
       </header>
 
-      {page === "home" && <HomePage navigate={navigate} addToCart={addToCart} />}
+      {page === "home" && <HomePage navigate={navigate} addToCart={addToCart} products={allProducts} />}
       {page === "catalog" && (
         <CatalogPage
           products={filteredProducts}
@@ -351,8 +351,8 @@ function ArticleSearch({ addToCart }: { addToCart: (p: Product) => void }) {
 }
 
 /* ========== HOME ========== */
-function HomePage({ navigate, addToCart }: { navigate: (p: Page) => void; addToCart: (p: Product) => void }) {
-  const featured = PRODUCTS.filter(p => p.oldPrice).slice(0, 4);
+function HomePage({ navigate, addToCart, products }: { navigate: (p: Page) => void; addToCart: (p: Product) => void; products: Product[] }) {
+  const featured = products.filter(p => p.oldPrice).slice(0, 4);
 
   return (
     <main>
